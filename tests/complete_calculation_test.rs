@@ -138,15 +138,15 @@ fn calculate_multiple_negative_subtraction() {
 
 #[test]
 fn calculate_parentheses() {
-    let expression = "(1 + 2) / 2";
-    let result = 1.0;
+    let expression = "( 1 + 2 ) / 2";
+    let result = 1.5;
 
     assert_eq!(calculate_expression(expression).unwrap(), result);
 }
 
 #[test]
 fn calculate_complex_parentheses() {
-    let expression = "((18 / 6 + 15) / 9) - 2 + 13.7 / 2";
+    let expression = "( ( 18 / 6 + 15 ) / 9 ) - 2 + 13.7 / 2";
     let result = 6.85;
 
     assert_eq!(calculate_expression(expression).unwrap(), result);

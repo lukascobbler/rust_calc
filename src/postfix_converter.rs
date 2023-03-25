@@ -1,5 +1,6 @@
 use crate::postfix_converter::PriorityOperation::{InStack, OutStack, EqualPriority};
 use crate::{Type, parse_expression};
+use crate::Type::{Operation, Parentheses};
 
 enum PriorityOperation {
     InStack,
@@ -29,15 +30,19 @@ fn priority_operation(new: char, in_stack: char) -> PriorityOperation {
     }
 }
 
-pub fn convert_to_postfix(prefix: &str) -> Option<Vec<Type>> {
+pub fn convert_to_postfix(parsed_prefix: Vec<Type>) -> Option<Vec<Type>> {
     let mut postfix_sequence = Vec::new();
 
     let mut operation_stack= Vec::new();
 
     let mut prev_op = false;
     let mut prev_num = false;
+    let mut index_closed = 0;
 
-    for token in parse_expression(prefix) {
+    for (index, &token) in parsed_prefix.iter().enumerate() {
+        if index <= index_closed && index_closed != 0 {
+            continue
+        }
         match token {
             Type::Number(_) => {
                 if prev_num {
@@ -68,11 +73,27 @@ pub fn convert_to_postfix(prefix: &str) -> Option<Vec<Type>> {
                 operation_stack.push(oper);
             },
             Type::Parentheses('(') => {
-                unimplemented!()
+                let mut counter = 1;
+                index_closed = index;
+
+                for &token in parsed_prefix[index+1..].iter() {
+                    if counter == 0 { break }
+                    index_closed += 1;
+                    match token {
+                        Type::Parentheses('(') => { counter += 1; }
+                        Type::Parentheses(')') => { counter -= 1; }
+                        _ => continue
+                    }
+                }
+
+                let mut sub_sequence= Vec::from_iter(parsed_prefix[index+1..index_closed].iter().cloned());
+
+                postfix_sequence.append(
+                    &mut convert_to_postfix(sub_sequence).unwrap()
+                );
+
+                prev_op = false;
             },
-            Type::Parentheses(')') => {
-                unimplemented!()
-            }
             _ => return None
         }
     }
@@ -94,7 +115,10 @@ mod conversion_tests {
         let prefix_sequence = "3 + 4 - 7";
         let postfix_sequence = "3 4 + 7 -";
 
-        assert_eq!(convert_to_postfix(prefix_sequence).unwrap(), parse_expression(postfix_sequence));
+        assert_eq!(
+            convert_to_postfix(parse_expression(prefix_sequence).unwrap()).unwrap(),
+            parse_expression(postfix_sequence).unwrap()
+        );
     }
 
     #[test]
@@ -102,7 +126,10 @@ mod conversion_tests {
         let prefix_sequence = "1 * 2 * 3 * 4";
         let postfix_sequence = "1 2 * 3 * 4 *";
 
-        assert_eq!(convert_to_postfix(prefix_sequence).unwrap(), parse_expression(postfix_sequence));
+        assert_eq!(
+            convert_to_postfix(parse_expression(prefix_sequence).unwrap()).unwrap(),
+            parse_expression(postfix_sequence).unwrap()
+        );
     }
 
     #[test]
@@ -110,7 +137,10 @@ mod conversion_tests {
         let prefix_sequence = "1 - 2 * 3 - 4 + 5 / 7";
         let postfix_sequence = "1 2 3 * - 4 - 5 7 / +";
 
-        assert_eq!(convert_to_postfix(prefix_sequence).unwrap(), parse_expression(postfix_sequence));
+        assert_eq!(
+            convert_to_postfix(parse_expression(prefix_sequence).unwrap()).unwrap(),
+            parse_expression(postfix_sequence).unwrap()
+        );
     }
 
     #[test]
@@ -118,22 +148,119 @@ mod conversion_tests {
         let prefix_sequence = "1 + 7 - 3 * 3 / 5 / 5 + 2 - 1 / 5";
         let postfix_sequence = "1 7 + 3 3 * 5 / 5 / - 2 + 1 5 / -";
 
-        assert_eq!(convert_to_postfix(prefix_sequence).unwrap(), parse_expression(postfix_sequence));
+        assert_eq!(
+            convert_to_postfix(parse_expression(prefix_sequence).unwrap()).unwrap(),
+            parse_expression(postfix_sequence).unwrap()
+        );
     }
 
     #[test]
     fn wrong_sequence_none() {
         let prefix_sequence = "1 - 2 - - 3";
 
-        assert_eq!(convert_to_postfix(prefix_sequence), None);
+        assert_eq!(
+            convert_to_postfix(parse_expression(prefix_sequence).unwrap()),
+            None
+        );
     }
 
     #[test]
-    fn parentheses_sequence() {
-        let prefix_sequence = "     ";
-        let postfix_sequence = "1 2 3 5 / - 4 15 / + 1 + 1 2 / + + 17 12 5 12 / + 3 + * - 32 -";
+    fn parentheses_one() {
+        let prefix_sequence = "( 11 + 5 )";
+        let postfix_sequence = "11 5 +";
 
-        assert_eq!(convert_to_postfix(prefix_sequence).unwrap(), parse_expression(postfix_sequence));
+        assert_eq!(
+            convert_to_postfix(parse_expression(prefix_sequence).unwrap()).unwrap(),
+            parse_expression(postfix_sequence).unwrap()
+        );
+    }
+
+    #[test]
+    fn parentheses_simple() {
+        let prefix_sequence = "( 4 + 3 ) / 8";
+        let postfix_sequence = "4 3 + 8 /";
+
+        assert_eq!(
+            convert_to_postfix(parse_expression(prefix_sequence).unwrap()).unwrap(),
+            parse_expression(postfix_sequence).unwrap()
+        );
+    }
+
+    #[test]
+    fn parentheses_simple_2() {
+        let prefix_sequence = "( 4 + 3 ) / ( 8 + 1 )";
+        let postfix_sequence = "4 3 + 8 1 + /";
+
+        assert_eq!(
+            convert_to_postfix(parse_expression(prefix_sequence).unwrap()).unwrap(),
+            parse_expression(postfix_sequence).unwrap()
+        );
+    }
+
+    #[test]
+    fn parentheses_simple_3() {
+        let prefix_sequence = "1 + ( 4 / 4 ) + 1";
+        let postfix_sequence = "1 4 4 / + 1 +";
+
+        assert_eq!(
+            convert_to_postfix(parse_expression(prefix_sequence).unwrap()).unwrap(),
+            parse_expression(postfix_sequence).unwrap()
+        );
+    }
+
+    #[test]
+    fn parentheses_simple_4() {
+        let prefix_sequence = "( 4 / 5 ) - ( 17 + 1 ) / ( 15 + 4 )";
+        let postfix_sequence = "4 5 / 17 1 + 15 4 + / -";
+
+        assert_eq!(
+            convert_to_postfix(parse_expression(prefix_sequence).unwrap()).unwrap(),
+            parse_expression(postfix_sequence).unwrap()
+        );
+    }
+
+    #[test]
+    fn parentheses_double() {
+        let prefix_sequence = "( ( ( 4 / 5 ) ) )";
+        let postfix_sequence = "4 5 / ";
+
+        assert_eq!(
+            convert_to_postfix(parse_expression(prefix_sequence).unwrap()).unwrap(),
+            parse_expression(postfix_sequence).unwrap()
+        );
+    }
+
+    #[test]
+    fn parentheses_complex() {
+        let prefix_sequence = "1 + ( 25 * 4 - 14 / 7 ) + 72 / ( ( 44 + 11 ) / 5 ) + 5";
+        let postfix_sequence = "1 25 4 * 14 7 / - + 72 44 11 + 5 / / + 5 +";
+
+        assert_eq!(
+            convert_to_postfix(parse_expression(prefix_sequence).unwrap()).unwrap(),
+            parse_expression(postfix_sequence).unwrap()
+        );
+    }
+
+    #[test]
+    fn parentheses_complex_2() {
+        let prefix_sequence = "( ( 7 * ( 5 - 2 ) + ( 9 / ( 1 + 2 ) ) ) * ( 6 - 2 ) / ( ( 5 / 1 ) * ( 7 + 2 ) ) ) + ( ( ( 8 - 2 ) * ( 9 / 3 ) - ( ( 2 * 6 ) / ( 4 + 1 ) ) ) * ( 5 + ( 7 / 3 ) ) ) - ( ( 9 - 1 ) * ( ( 2 + 4 ) * ( 3 / 1 ) - ( 6 * 2 ) / ( 5 + 3 ) ) ) / ( ( 35 - 3 ) + ( 9 / 2 ) )";
+        let postfix_sequence = "7 5 2 - * 9 1 2 + / + 6 2 - * 5 1 / 7 2 + * / 8 2 - 9 3 / * 2 6 * 4 1 + / - 5 7 3 / + * + 9 1 - 2 4 + 3 1 / * 6 2 * 5 3 + / - * 35 3 - 9 2 / + / -";
+
+        assert_eq!(
+            convert_to_postfix(parse_expression(prefix_sequence).unwrap()).unwrap(),
+            parse_expression(postfix_sequence).unwrap()
+        );
+    }
+
+    #[test]
+    fn parentheses_complex_mix_space() {
+        let prefix_sequence = "(( 7 * ( 5- 2)    + ( 9 / ( 1 + 2 ) ) ) * (6 - 2 ) / ( ( 5/ 1 ) * (7 + 2 ) ))   +  (( (8 - 2 ) * (9 / 3 ) - ( ( 2 * 6 ) / ( 4 + 1) )) * ( 5 + (7 / 3 ) ) )-  ( ( 9   -1 ) * ( ( 2 + 4 ) * ( 3 / 1 ) - ( 6 * 2) /( 5 + 3 ))) / ( ( 35 - 3 ) + ( 9 / 2 ))";
+        let postfix_sequence = "7 5 2 - * 9 1 2 + / + 6 2 - * 5 1 / 7 2 + * / 8 2 - 9 3 / * 2 6 * 4 1 + / - 5 7 3 / + * + 9 1 - 2 4 + 3 1 / * 6 2 * 5 3 + / - * 35 3 - 9 2 / + / -";
+
+        assert_eq!(
+            convert_to_postfix(parse_expression(prefix_sequence).unwrap()).unwrap(),
+            parse_expression(postfix_sequence).unwrap()
+        );
     }
 
     #[test]
@@ -141,15 +268,21 @@ mod conversion_tests {
         let prefix_sequence = "12 + 11";
         let postfix_sequence = "12 11 +";
 
-        assert_eq!(convert_to_postfix(prefix_sequence).unwrap(), parse_expression(postfix_sequence));
+        assert_eq!(
+            convert_to_postfix(parse_expression(prefix_sequence).unwrap()).unwrap(),
+            parse_expression(postfix_sequence).unwrap()
+        );
     }
 
     #[test]
     fn double_digit_parentheses() {
-        let prefix_sequence = "853 + (12 / (1 + 5)) - 855 + (11 - 7)";
+        let prefix_sequence = "853 + ( 12 / ( 1 + 5 ) ) - 855 + ( 11 - 7 )";
         let postfix_sequence = "853 12 1 5 + / + 855 - 11 7 - +";
 
-        assert_eq!(convert_to_postfix(prefix_sequence).unwrap(), parse_expression(postfix_sequence));
+        assert_eq!(
+            convert_to_postfix(parse_expression(prefix_sequence).unwrap()).unwrap(),
+            parse_expression(postfix_sequence).unwrap()
+        );
     }
 
     #[test]
@@ -157,6 +290,9 @@ mod conversion_tests {
         let prefix_sequence = "11.5 - 72.889 / 553";
         let postfix_sequence = "11.5 72.889 553 / -";
 
-        assert_eq!(convert_to_postfix(prefix_sequence).unwrap(), parse_expression(postfix_sequence));
+        assert_eq!(
+            convert_to_postfix(parse_expression(prefix_sequence).unwrap()).unwrap(),
+            parse_expression(postfix_sequence).unwrap()
+        );
     }
 }

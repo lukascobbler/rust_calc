@@ -10,8 +10,13 @@ pub fn calculate_expression(expression: &str) -> Result<f64, &str>{
         return Err("not every parentheses has a pair");
     }
 
-    let expression = match postfix_converter::convert_to_postfix(expression) {
-        None => return Err("the entered expression has too many operands or illegal characters"),
+    let parsed_expression = match parse_expression(expression) {
+        Some(pe) => pe,
+        None => return Err("the entered expression contains illegal characters")
+    };
+
+    let expression = match postfix_converter::convert_to_postfix(parsed_expression) {
+        None => return Err("the entered expression has too many operands"),
         Some(ex) => ex
     };
 
@@ -21,7 +26,7 @@ pub fn calculate_expression(expression: &str) -> Result<f64, &str>{
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Type {
     Number(f64),
     Operation(char),
@@ -29,7 +34,7 @@ pub enum Type {
     Illegal,
 }
 
-fn parse_expression(expression: &str) -> Vec<Type> {
+fn parse_expression(expression: &str) -> Option<Vec<Type>> {
     let mut tokens = Vec::new();
 
     let types = [
@@ -38,17 +43,17 @@ fn parse_expression(expression: &str) -> Vec<Type> {
         Regex::new(r"[()]").unwrap(),
     ];
 
-    for token in expression.split(" ") {
+    for token in expression.split_whitespace() {
         if types[0].is_match(token) {
-            tokens.push(Type::Number(token.parse().unwrap()));
+            tokens.push(Type::Number(token.parse().ok()?));
         } else if types[1].is_match(token) {
-            tokens.push(Type::Operation(token.parse().unwrap()));
+            tokens.push(Type::Operation(token.parse().ok()?));
         } else if types[2].is_match(token) {
-            tokens.push(Type::Parentheses(token.parse().unwrap()));
+            tokens.push(Type::Parentheses(token.parse().ok()?));
         }
     }
 
-    tokens
+    Some(tokens)
 }
 
 #[cfg(test)]
@@ -61,7 +66,7 @@ mod parse_expression_tests {
         let expression = "1 + 1";
         let result = vec![Type::Number(1.0), Type::Operation('+'), Type::Number(1.0)];
 
-        assert_eq!(parse_expression(expression), result);
+        assert_eq!(parse_expression(expression).unwrap(), result);
     }
 
     #[test]
@@ -69,6 +74,14 @@ mod parse_expression_tests {
         let expression = "1 + 1 ";
         let result = vec![Type::Number(1.0), Type::Operation('+'), Type::Number(1.0)];
 
-        assert_eq!(parse_expression(expression), result);
+        assert_eq!(parse_expression(expression).unwrap(), result);
+    }
+
+    #[test]
+    fn parse_no_space() {
+        let expression = "1+1";
+        let result = vec![Type::Number(1.0), Type::Operation('+'), Type::Number(1.0)];
+
+        assert_eq!(parse_expression(expression).unwrap(), result);
     }
 }

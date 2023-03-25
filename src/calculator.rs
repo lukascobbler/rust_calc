@@ -46,41 +46,41 @@ mod calculator_tests {
     fn calculate_addition() {
         let expression = "1 2 +";
 
-        assert_eq!(calculate(parse_expression(expression)).unwrap(), 3.0);
+        assert_eq!(calculate(parse_expression(expression).unwrap()).unwrap(), 3.0);
     }
 
     #[test]
     fn calculate_subtraction() {
         let expression = "1 2 -";
 
-        assert_eq!(calculate(parse_expression(expression)).unwrap(), -1.0);
+        assert_eq!(calculate(parse_expression(expression).unwrap()).unwrap(), -1.0);
     }
 
     #[test]
     fn calculate_division() {
         let expression = "3 4 /";
 
-        assert_eq!(calculate(parse_expression(expression)).unwrap(), 0.75);
+        assert_eq!(calculate(parse_expression(expression).unwrap()).unwrap(), 0.75);
     }
 
     #[test]
     fn calculate_multiplication() {
         let expression = "5 5 *";
 
-        assert_eq!(calculate(parse_expression(expression)).unwrap(), 25.0);
+        assert_eq!(calculate(parse_expression(expression).unwrap()).unwrap(), 25.0);
     }
 
     #[test]
     fn calculate_mix() {
         let expression = "12 12 + 24 - 700 +";
 
-        assert_eq!(calculate(parse_expression(expression)).unwrap(), 700.0);
+        assert_eq!(calculate(parse_expression(expression).unwrap()).unwrap(), 700.0);
     }
 
     #[test]
     fn calculate_mix_complex() {
         let expression = "1 2 3 4 / - 4 8 / + 1 + 1 2 / + + 17 12 5 10 / + 3 + * - 32 -";
 
-        assert_eq!(calculate(parse_expression(expression)).unwrap(), -291.25);
+        assert_eq!(calculate(parse_expression(expression).unwrap()).unwrap(), -291.25);
     }
 }
