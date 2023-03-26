@@ -15,12 +15,12 @@ pub fn calculate_expression(expression: &str) -> Result<f64, &str>{
         None => return Err("the entered expression contains illegal characters")
     };
 
-    let expression = match postfix_converter::convert_to_postfix(parsed_expression) {
+    let calculation_tokens = match postfix_converter::convert_to_postfix(parsed_expression) {
         None => return Err("the entered expression has too many operands"),
-        Some(ex) => ex
+        Some(ct) => ct
     };
 
-    return match calculator::calculate(expression) {
+    return match calculator::calculate(calculation_tokens) {
         None => Err("math error (ex. 0 division error)"),
         Some(final_result) => Ok(final_result)
     }
