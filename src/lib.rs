@@ -31,7 +31,6 @@ pub enum Type {
     Number(f64),
     Operation(char),
     Parentheses(char),
-    Illegal,
 }
 
 fn parse_expression(expression: &str) -> Option<Vec<Type>> {
@@ -50,6 +49,8 @@ fn parse_expression(expression: &str) -> Option<Vec<Type>> {
             tokens.push(Type::Operation(token.parse().ok()?));
         } else if types[2].is_match(token) {
             tokens.push(Type::Parentheses(token.parse().ok()?));
+        } else {
+            return None
         }
     }
 
